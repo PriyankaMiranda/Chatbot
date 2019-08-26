@@ -1,0 +1,167 @@
+
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <title>Flask_Chat_App</title>
+  </head>
+  <body>
+
+    <h3 style='color: #ccc;font-size: 30px;'>No message yet..</h3>
+
+    <!--  The line below displays the messaging data as we submit it  -->     
+    <div class="message_holder"></div>
+    <div class="button_container"></div>
+    <input type="button" value="Establish Connection" id="connect"/>
+    <input type="text" class="message" placeholder="Messages" id="input"/>
+    <button id="send">send</button>
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.7.3/socket.io.min.js"></script>
+    <script type="text/javascript">
+
+  // Defining socket location and checks if connection is established   
+    var socket;
+    var validator;
+    listx=['Name','Email_id','Number'];
+    var elem; 
+    global_options_dict={}
+    document.getElementById("connect").onclick= function(){
+      socket = io.connect('http://' + document.domain + ':' + location.port);
+
+      // ----------------when you press establish connection button-----------------
+      socket.on( 'connect', start_conv)  
+
+      $( '#send' ).on( 'click', user_input)
+      // ----------------display options when it is required-----------------
+      socket.on( 'display options', function( options_dict ) {
+        if(options_dict==null || options_dict['type']=='ending'){
+          try{
+            previous_check=document.getElementById("x").style.fontWeight;   
+          }
+          catch{          
+            options_dict={}
+            options_dict['list']=listx
+            options_dict['user']='Bot'
+            options_dict['type']='ending'
+          }
+          if(options_dict['list'][0]!= undefined){
+            global_options_dict=options_dict
+            socket.emit( 'Chat Event', {user: "Bot", message: options_dict['list'][0], type: 'body'})
+          }
+          else{
+            options_dict['message']="Thank you for sharing your details. We will get back to you as soon as possible."
+            socket.emit( 'Chat Event', {user: "Bot", message: options_dict['message'], type: 'body'})
+
+            document.getElementById("send").style.display="none"
+            document.getElementById("input").style.display="none"
+            return
+          }        
+          }
+        else{
+          btn_list=[]
+          for (const key in options_dict){
+            console.log(options_dict[key])
+            console.log(key)
+            value=Object.keys(options_dict[key]);
+            let rando_btn = Math.random().toString(36).substring(10);
+            btn_list.push(rando_btn)
+            $( 'div.button_container' ).append( '<input type="button" id='+rando_btn+' > ')
+            document.getElementById(rando_btn).value=value
+            document.getElementById(rando_btn).onclick=function (){
+            // ------------------------------------------------------------------------------ 
+            // ------------------------------------------------------------------------------          
+            // ----------------To do: get results based on the user's choice -----------------
+            // ------------------------------------------------------------------------------ 
+            // ------------------------------------------------------------------------------                     
+            socket.emit( 'Chat Event', {user: "You", message: this.value, type: 'body'})
+            socket.emit( 'Chat Event', {user: "Bot", message: "Okay.Let me look into it...<br/>-----------<br/> ---RESULTS--- <br/>-----------", type: 'body'})
+            remove_buttons(btn_list)
+            update_dict(this,options_dict)
+        }
+        }
+        }
+
+        })
+
+
+        // ----------------when bot gives response, show on screen and  give options-----------------
+        socket.on( 'response', function(msg) {
+          console.log(msg)
+          $( 'h3' ).remove()
+          $( 'div.message_holder' ).append( '<span><b style="color: #000">'+msg.user+':</b></span><span style="color: #000">'+msg.message+'</span><br/>' )
+          // ----------------ask to give options-----------------
+          if (JSON.stringify(msg['user_options']) === '{}'){
+            socket.emit( 'Get options',msg['user_options'])
+          }
+        })
+    document.getElementById("connect").style.display="none"
+    };
+
+
+    function start_conv() {
+      var start_message="Hello there! Welome to Flipshope. How can I assist you?";
+      socket.emit( 'Chat Event', {user: "Bot", message: start_message, type: 'intro'})
+    }
+
+
+    function user_input(){
+      let user_input = $( 'input.message' ).val()
+      socket.emit( 'Chat Event', {user: "You", message: user_input, type: 'body'})
+      $( 'input.message' ).val( '' ).focus()
+      // if the user inputs the correcr input, then only shift array 
+      validator=check_input({type:global_options_dict['list'][0], data: user_input})
+      if (validator){
+        global_options_dict['list'].shift();    
+      }
+      socket.emit( 'Get details', global_options_dict)
+    }
+
+    function check_input(input){
+      type=input['type']
+      data=input['data']
+      console.log(type+" : "+data)
+      if(type=='Email_id'){
+        var reg = /^([A-Za-z0-9_\-\.])+\@([A-Za-z0-9_\-\.])+\.([A-Za-z])$/;  
+      }
+      else if(type=='Number'){
+        var reg = /^([0-9]{10,10})+$/;
+      }
+      else if(type=='Name'){
+        var reg = /^[A-Za-z]+$/;
+      }
+      if (reg.test(data) == false ){
+        alert('Invalid '+type);
+        return false;
+      }
+      return true;
+    }
+
+    function remove_buttons(btn_list){
+      for (var btn in btn_list){
+      document.getElementById(btn_list[btn]).style.display="none" 
+      }
+    }
+
+    function update_dict(e,options_dict){
+      var updated_dict = [];
+      for (const key in options_dict){
+      value=Object.keys(options_dict[key]);
+        if (value==e.value){
+          updated_dict=options_dict[key]
+          break
+        }
+      }
+      updated_dict['user_options']=e.value
+      socket.emit( 'Get options',updated_dict)
+    }
+
+
+
+
+    </script>
+
+  </body>
+  </html>
+
