@@ -27,9 +27,9 @@
     listx=['Name','Email_id','Number'];
     var elem; 
     global_options_dict={}
+    user_data={}
     document.getElementById("connect").onclick= function(){
       socket = io.connect('http://' + document.domain + ':' + location.port);
-
       // ----------------when you press establish connection button-----------------
       socket.on( 'connect', start_conv)  
 
@@ -37,6 +37,10 @@
       // ----------------display options when it is required-----------------
       socket.on( 'display options', function( options_dict ) {
         if(options_dict==null || options_dict['type']=='ending'){
+          if (options_dict==null){
+            ask_user="For more updates regarding your queries, share a few details."
+            socket.emit( 'Chat Event', {user: "Bot", message: ask_user, type: 'before_getting_details'})
+          }
           try{
             previous_check=document.getElementById("x").style.fontWeight;   
           }
@@ -48,9 +52,11 @@
           }
           if(options_dict['list'][0]!= undefined){
             global_options_dict=options_dict
-            socket.emit( 'Chat Event', {user: "Bot", message: options_dict['list'][0], type: 'body'})
+            socket.emit( 'Chat Event', {user: "Bot", message: options_dict['list'][0], type: 'usr_data'})
           }
           else{
+            console.log(user_data)
+            socket.emit( 'Update db', user_data)
             options_dict['message']="Thank you for sharing your details. We will get back to you as soon as possible."
             socket.emit( 'Chat Event', {user: "Bot", message: options_dict['message'], type: 'body'})
 
@@ -88,6 +94,10 @@
 
         // ----------------when bot gives response, show on screen and  give options-----------------
         socket.on( 'response', function(msg) {
+          if (msg.type=="before_getting_details"){
+          $( 'div.message_holder' ).append( '<span><b style="color: #000">'+msg.user+':</b></span><span style="color: #000">'+msg.message+'</span><br/>' )            
+          return
+          }
           console.log(msg)
           $( 'h3' ).remove()
           $( 'div.message_holder' ).append( '<span><b style="color: #000">'+msg.user+':</b></span><span style="color: #000">'+msg.message+'</span><br/>' )
@@ -112,6 +122,8 @@
       $( 'input.message' ).val( '' ).focus()
       // if the user inputs the correcr input, then only shift array 
       validator=check_input({type:global_options_dict['list'][0], data: user_input})
+
+      user_data[global_options_dict['list'][0]]=user_input
       if (validator){
         global_options_dict['list'].shift();    
       }

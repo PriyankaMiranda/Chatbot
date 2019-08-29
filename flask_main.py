@@ -4,11 +4,17 @@ from flask_socketio import SocketIO
 import main 
 from train_bot import train_bot_class 
 import numpy as np
-
+from pymongo import MongoClient
 app = Flask(__name__)
 app.config['SECRET_KEY'] = '123##'
 socketio = SocketIO(app)
 bots=train_bot_class()
+
+
+client = MongoClient("mongodb://chatbot_admin:qwerty123@127.0.0.1:27017") #host uri
+db = client.mymongodb #Select the database
+chatbot_dbs = db.chatbot_db
+
 
 @app.route('/')
 def sessions():
@@ -20,6 +26,9 @@ def messageReceived(methods=['GET', 'POST']):
 def get_reply(query):
 	return str(bots.conversation_bot.get_response(query))
 
+@socketio.on('Update db')  
+def update_db (user):   
+	chatbot_dbs.insert(user)	
 
 @socketio.on('Get details')
 def get_details(value, methods=['GET', 'POST']):
@@ -28,10 +37,6 @@ def get_details(value, methods=['GET', 'POST']):
 	print("----------------------")
 	socketio.emit('display options', value, callback=messageReceived)
 
-@socketio.on('Check result')
-def check_result(value, methods=['GET', 'POST']):
-	print(value['type'])
-	print(value['data'])
 
 @socketio.on('Get options')
 def send_options(value, methods=['GET', 'POST']):
